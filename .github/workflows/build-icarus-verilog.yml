@@ -59,8 +59,9 @@ jobs:
             "https://github.com/steveicarus/iverilog/archive/refs/tags/${source_tag}.tar.gz" \
             --output iverilog.tar.gz
 
-          source_dir="$(tar -tzf iverilog.tar.gz | head -1 | cut -d/ -f1)"
           tar -xzf iverilog.tar.gz
+          source_dir="$(find . -mindepth 1 -maxdepth 1 -type d -name 'iverilog-*' -print -quit)"
+          test -n "$source_dir"
           cd "$source_dir"
 
           # The GitHub tag archive does not include the generated configure
