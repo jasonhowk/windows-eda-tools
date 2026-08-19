@@ -33,7 +33,7 @@ jobs:
         shell: pwsh
         run: |
           scoop bucket add java
-          scoop bucket add eda-tools $env:GITHUB_WORKSPACE
+          scoop bucket add eda-tools https://github.com/jasonhowk/windows-eda-tools
 
       - name: Install Digital
         shell: pwsh

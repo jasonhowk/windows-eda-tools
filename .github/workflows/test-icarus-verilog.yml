@@ -31,7 +31,7 @@ jobs:
 
       - name: Add local bucket
         shell: pwsh
-        run: scoop bucket add eda-tools $env:GITHUB_WORKSPACE
+        run: scoop bucket add eda-tools https://github.com/jasonhowk/windows-eda-tools
 
       - name: Install Icarus Verilog
         shell: pwsh
