@@ -22,6 +22,10 @@ jobs:
         shell: pwsh
         run: irm get.scoop.sh | iex
 
+      - name: Install Git bucket prerequisite
+        shell: pwsh
+        run: scoop install git
+
       - name: Add dependency and local buckets
         shell: pwsh
         run: |
@@ -40,4 +44,9 @@ jobs:
             throw "Digital.jar was not installed under $prefix"
           }
 
+          if (-not (Get-Command digital -ErrorAction SilentlyContinue)) {
+            throw "The digital command shim was not created"
+          }
+
           java -version
+          scoop shim info digital
