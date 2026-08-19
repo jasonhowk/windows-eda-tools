@@ -16,6 +16,7 @@ irm get.scoop.sh | iex
 Add this bucket:
 
 ```powershell
+scoop install git
 scoop bucket add java
 scoop bucket add eda-tools https://github.com/jasonhowk/windows-eda-tools
 ```
@@ -63,3 +64,25 @@ Windows artifacts are published through [GitHub Releases](https://github.com/jas
 ## Related project
 
 The macOS packages are available from the [homebrew-eda-tools](https://github.com/jasonhowk/homebrew-eda-tools) Homebrew tap.
+
+## FAQ
+
+### Scoop says PowerShell is running as administrator
+
+Scoop is intended to install per-user without administrator privileges. If the Windows **Run** dialog displays:
+
+> This task will be created with administrative privileges.
+
+User Account Control may be disabled. This commonly occurs when **Change User Account Control settings** is set to **Never notify**.
+
+Move the UAC setting at least one step above **Never notify**, restart Windows, and open a new PowerShell window. The following command should then return `False`:
+
+```powershell
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = [Security.Principal.WindowsPrincipal] $identity
+$principal.IsInRole(
+  [Security.Principal.WindowsBuiltInRole]::Administrator
+)
+```
+
+If it returns `False`, PowerShell is running with the unelevated user token required by Scoop.
