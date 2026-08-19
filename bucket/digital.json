@@ -9,12 +9,6 @@
   "depends": [
     "java/temurin17-jre"
   ],
-  "bin": "Digital.exe",
-  "shortcuts": [
-    [
-      "Digital.exe",
-      "Digital"
-    ]
-  ],
+  "bin": "Digital.jar",
   "notes": "Run with: digital"
 }
