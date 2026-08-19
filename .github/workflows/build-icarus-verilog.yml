@@ -1,0 +1,110 @@
+name: Build Icarus Verilog
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Icarus Verilog source version
+        required: true
+        default: "12.0"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 MinGW x64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            autoconf
+            base-devel
+            bison
+            flex
+            gperf
+            make
+            mingw-w64-x86_64-bzip2
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-readline
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-zlib
+            python
+            zip
+
+      - name: Build and test Icarus Verilog
+        env:
+          ICARUS_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          workspace="$PWD"
+
+          case "$ICARUS_VERSION" in
+            12.0) source_tag="v12_0" ;;
+            *) echo "Unsupported source version: $ICARUS_VERSION" >&2; exit 1 ;;
+          esac
+
+          curl --fail --location \
+            "https://github.com/steveicarus/iverilog/archive/refs/tags/${source_tag}.tar.gz" \
+            --output iverilog.tar.gz
+
+          source_dir="$(tar -tzf iverilog.tar.gz | head -1 | cut -d/ -f1)"
+          tar -xzf iverilog.tar.gz
+          cd "$source_dir"
+
+          # The GitHub tag archive does not include the generated configure
+          # files, so follow the author's source-tree instructions here.
+          sh autoconf.sh
+          env CFLAGS=-O2 CXXFLAGS=-O2 LDFLAGS=-s \
+            ./configure --prefix="$MINGW_PREFIX"
+          make -j"$(nproc)"
+          make check
+
+          rm -rf stage
+          make DESTDIR="$PWD/stage" install
+
+          mkdir -p stage/mingw64/bin
+          cp -n /mingw64/bin/*.dll stage/mingw64/bin/ 2>/dev/null || true
+
+          cat > hello.v <<'VERILOG'
+          module main;
+            initial begin
+              $display("Icarus Verilog Windows smoke test passed");
+              $finish;
+            end
+          endmodule
+          VERILOG
+
+          stage/mingw64/bin/iverilog.exe -o hello.vvp hello.v
+          smoke_output="$(stage/mingw64/bin/vvp.exe hello.vvp)"
+          echo "$smoke_output"
+          echo "$smoke_output" | grep -F "Icarus Verilog Windows smoke test passed"
+
+          cd stage/mingw64
+          zip -r "$workspace/iverilog-${ICARUS_VERSION}-windows-x64.zip" .
+
+      - name: Generate checksum
+        shell: pwsh
+        run: |
+          $artifact = "iverilog-${{ inputs.version }}-windows-x64.zip"
+          $hash = (Get-FileHash -Algorithm SHA256 $artifact).Hash.ToLowerInvariant()
+          "$hash  $artifact" | Set-Content -NoNewline "$artifact.sha256"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: iverilog-${{ inputs.version }}-windows-x64
+          path: |
+            iverilog-${{ inputs.version }}-windows-x64.zip
+            iverilog-${{ inputs.version }}-windows-x64.zip.sha256
