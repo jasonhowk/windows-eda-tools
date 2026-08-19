@@ -1,0 +1,43 @@
+name: Test Digital package
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - bucket/digital.json
+      - .github/workflows/test-digital.yml
+
+permissions:
+  contents: read
+
+jobs:
+  digital:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Scoop
+        shell: pwsh
+        run: irm get.scoop.sh | iex
+
+      - name: Add dependency and local buckets
+        shell: pwsh
+        run: |
+          scoop bucket add java
+          scoop bucket add eda-tools $env:GITHUB_WORKSPACE
+
+      - name: Install Digital
+        shell: pwsh
+        run: scoop install eda-tools/digital
+
+      - name: Verify Digital installation
+        shell: pwsh
+        run: |
+          $prefix = scoop prefix digital
+          if (-not (Test-Path (Join-Path $prefix 'Digital.jar'))) {
+            throw "Digital.jar was not installed under $prefix"
+          }
+
+          java -version

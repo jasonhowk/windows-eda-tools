@@ -16,6 +16,7 @@ irm get.scoop.sh | iex
 Add this bucket:
 
 ```powershell
+scoop bucket add java
 scoop bucket add eda-tools https://github.com/jasonhowk/windows-eda-tools
 ```
 

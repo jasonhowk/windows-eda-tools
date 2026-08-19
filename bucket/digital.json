@@ -1,0 +1,13 @@
+{
+  "version": "0.31",
+  "description": "Visual digital logic designer and circuit simulator for educational purposes",
+  "homepage": "https://github.com/hneemann/Digital",
+  "license": "GPL-3.0-only",
+  "url": "https://github.com/hneemann/Digital/releases/latest/download/Digital.zip",
+  "hash": "12f014c8b99140554f8f7464ebc771bbe3de6af39c83c20463492bcb892afc69",
+  "depends": [
+    "java/temurin17-jre"
+  ],
+  "bin": "Digital.jar",
+  "notes": "Run with: digital"
+}
