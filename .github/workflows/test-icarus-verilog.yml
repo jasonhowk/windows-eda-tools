@@ -67,7 +67,8 @@ jobs:
           $output = vvp hello.vvp
           Write-Host $output
 
-          if ($output -notmatch 'Icarus Verilog Scoop smoke test passed') {
+          $outputText = $output -join [Environment]::NewLine
+          if ($outputText -notmatch 'Icarus Verilog Scoop smoke test passed') {
             throw "Unexpected simulation output"
           }
 

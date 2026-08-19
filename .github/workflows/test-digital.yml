@@ -52,4 +52,4 @@ jobs:
           }
 
           java -version
-          scoop shim info Digital
+          Get-Command digital | Select-Object Name, Source
