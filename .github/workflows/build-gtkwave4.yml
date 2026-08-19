@@ -1,0 +1,154 @@
+name: Build GTKWave4
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: Create or replace the GitHub Release after a successful build
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  GTKWAVE_VERSION: 4.0.0-prealpha-1dbe6d02
+  GTKWAVE_COMMIT: 1dbe6d02196f5badd13a25adb02a19a11e7dd2eb
+  GTKWAVE_SHA256: 56f5ead9f253e5d2b1ff1e448b9c7afa797e054584692457f2ad19360f4fcf67
+  LIBFST_COMMIT: 74301348450701727776c1a0522a3f512738e9ae
+  LIBFST_SHA256: b2bdd572310fddf5d66aa14c6062342c9f899d66439d0203efa68bc3e77a8bc0
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 UCRT64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-gtk3
+            mingw-w64-ucrt-x86_64-gtk4
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-glib2
+            mingw-w64-ucrt-x86_64-gobject-introspection
+            mingw-w64-ucrt-x86_64-json-glib
+            mingw-w64-ucrt-x86_64-gperf
+            mingw-w64-ucrt-x86_64-meson
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-desktop-file-utils
+            mingw-w64-ucrt-x86_64-diffutils
+            mingw-w64-ucrt-x86_64-adwaita-icon-theme
+            flex
+            bison
+            tree
+            zip
+
+      - name: Build and test GTKWave4
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+
+          curl --fail --location \
+            "https://github.com/gtkwave/gtkwave/archive/${GTKWAVE_COMMIT}.tar.gz" \
+            --output gtkwave.tar.gz
+          printf '%s  %s\n' "$GTKWAVE_SHA256" gtkwave.tar.gz | sha256sum --check
+
+          curl --fail --location \
+            "https://github.com/gtkwave/libfst/archive/${LIBFST_COMMIT}.tar.gz" \
+            --output libfst.tar.gz
+          printf '%s  %s\n' "$LIBFST_SHA256" libfst.tar.gz | sha256sum --check
+
+          tar -xzf gtkwave.tar.gz
+          tar -xzf libfst.tar.gz
+          gtkwave_source="$(find . -mindepth 1 -maxdepth 1 -type d -name 'gtkwave-*' -print -quit)"
+          libfst_source="$(find . -mindepth 1 -maxdepth 1 -type d -name 'libfst-*' -print -quit)"
+          test -n "$gtkwave_source"
+          test -n "$libfst_source"
+          mkdir -p "$gtkwave_source/subprojects/libfst"
+          cp -a "$libfst_source"/. "$gtkwave_source/subprojects/libfst/"
+
+          cd "$gtkwave_source"
+          meson setup -Djudy=disabled --prefix=/opt/gtkwave build
+          meson compile -C build
+          meson test -C build -v
+
+          rm -rf stage package
+          DESTDIR="$PWD/stage" meson install -C build
+          mkdir -p package
+          cp -a stage/opt/gtkwave/. package/
+
+          # Bundle the UCRT64 runtime libraries required by the executable.
+          mkdir -p package/bin
+          while read -r dll; do
+            test -f "$dll" && cp -n "$dll" package/bin/
+          done < <(ldd package/bin/gtkwave.exe | awk '$3 ~ /^\/ucrt64\/bin\/.*\.dll$/ { print $3 }')
+
+          # GTK and GLib discover these data files through their normal share paths.
+          for share_dir in glib-2.0 icons themes; do
+            if test -d "/ucrt64/share/$share_dir"; then
+              mkdir -p "package/share/$share_dir"
+              cp -a "/ucrt64/share/$share_dir/." "package/share/$share_dir/"
+            fi
+          done
+
+          cat > package/gtkwave.cmd <<'CMD'
+          @echo off
+          set "GTKWAVE_HOME=%~dp0"
+          set "PATH=%GTKWAVE_HOME%bin;%PATH%"
+          set "GSETTINGS_SCHEMA_DIR=%GTKWAVE_HOME%share\glib-2.0\schemas"
+          set "XDG_DATA_DIRS=%GTKWAVE_HOME%share;%XDG_DATA_DIRS%"
+          "%GTKWAVE_HOME%bin\gtkwave.exe" %*
+          CMD
+
+          test -f package/bin/gtkwave.exe
+          tree package
+          cd package
+          zip -r "$GITHUB_WORKSPACE/gtkwave4-${GTKWAVE_VERSION}-windows-x64.zip" .
+
+      - name: Generate checksum
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ env.GTKWAVE_VERSION }}
+        run: |
+          $archive = "gtkwave4-$env:RELEASE_VERSION-windows-x64.zip"
+          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          "$hash  $archive" | Set-Content -NoNewline "$archive.sha256"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gtkwave4-${{ env.GTKWAVE_VERSION }}-windows-x64
+          path: |
+            gtkwave4-${{ env.GTKWAVE_VERSION }}-windows-x64.zip
+            gtkwave4-${{ env.GTKWAVE_VERSION }}-windows-x64.zip.sha256
+
+      - name: Create GitHub Release
+        if: ${{ inputs.create_release }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ env.GTKWAVE_VERSION }}
+        run: |
+          $releaseTag = "gtkwave4-$env:RELEASE_VERSION"
+          $archive = "gtkwave4-$env:RELEASE_VERSION-windows-x64.zip"
+          $checksum = "$archive.sha256"
+
+          gh release view $releaseTag --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release delete $releaseTag --repo $env:GITHUB_REPOSITORY --yes
+          }
+
+          gh release create $releaseTag `
+            --repo $env:GITHUB_REPOSITORY `
+            --title "GTKWave4 $env:RELEASE_VERSION for Windows" `
+            --notes "Windows x64 build of GTKWave4 $env:RELEASE_VERSION." `
+            $archive $checksum
