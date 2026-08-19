@@ -20,7 +20,10 @@ jobs:
 
       - name: Install Scoop
         shell: pwsh
-        run: irm get.scoop.sh | iex
+        run: |
+          irm get.scoop.sh | iex
+          $shimPath = Join-Path $env:USERPROFILE 'scoop\shims'
+          $shimPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install Git bucket prerequisite
         shell: pwsh
