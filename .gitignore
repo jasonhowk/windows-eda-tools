@@ -1,0 +1,17 @@
+# Build and packaging output
+dist/
+build/
+out/
+artifacts/
+
+# Scoop and local tooling
+.scoop/
+
+# PowerShell/editor files
+*.user
+*.suo
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db

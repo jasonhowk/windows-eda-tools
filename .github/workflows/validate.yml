@@ -1,0 +1,42 @@
+name: Validate Scoop manifests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  manifests:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate manifest JSON
+        shell: pwsh
+        run: |
+          $manifests = Get-ChildItem -Path bucket -Filter '*.json' -File
+
+          foreach ($file in $manifests) {
+            try {
+              $manifest = Get-Content -Raw -Path $file.FullName | ConvertFrom-Json
+            }
+            catch {
+              throw "Invalid JSON in $($file.Name): $($_.Exception.Message)"
+            }
+
+            foreach ($property in @('version', 'description')) {
+              if (-not $manifest.PSObject.Properties.Name.Contains($property)) {
+                throw "Missing '$property' in $($file.Name)"
+              }
+            }
+
+            if (-not $manifest.url -and -not $manifest.architecture) {
+              throw "Missing 'url' or 'architecture' in $($file.Name)"
+            }
+          }
+
+          Write-Host "Validated $($manifests.Count) Scoop manifest(s)."
