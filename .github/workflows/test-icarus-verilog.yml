@@ -48,7 +48,7 @@ jobs:
             throw "The vvp command shim was not created"
           }
 
-          foreach ($command in @('iverilog-vpi', 'ivlpp', 'vhdlpp')) {
+          foreach ($command in @('iverilog-vpi')) {
             if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
               throw "The $command command shim was not created"
             }
@@ -73,5 +73,3 @@ jobs:
 
           iverilog -V
           iverilog-vpi -V
-          ivlpp -V
-          vhdlpp -V

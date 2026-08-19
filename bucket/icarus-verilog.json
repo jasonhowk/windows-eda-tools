@@ -8,10 +8,8 @@
   "bin": [
     "bin/iverilog.exe",
     "bin/vvp.exe",
-    "bin/iverilog-vpi.exe",
-    "bin/ivlpp.exe",
-    "bin/vhdlpp.exe"
+    "bin/iverilog-vpi.exe"
   ],
   "env_add_path": "bin",
-  "notes": "Commands provided: iverilog, vvp, iverilog-vpi, ivlpp, and vhdlpp"
+  "notes": "Commands provided: iverilog, vvp, and iverilog-vpi"
 }

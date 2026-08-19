@@ -52,4 +52,4 @@ jobs:
           }
 
           java -version
-          scoop shim info digital
+          scoop shim info Digital
