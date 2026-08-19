@@ -1,0 +1,17 @@
+{
+  "version": "12.0",
+  "description": "Verilog simulation and synthesis tool",
+  "homepage": "https://steveicarus.github.io/iverilog/",
+  "license": "GPL-2.0-or-later",
+  "url": "https://github.com/jasonhowk/windows-eda-tools/releases/download/iverilog-12.0/iverilog-12.0-windows-x64.zip",
+  "hash": "4fe3e85b39049091736b21cca1ae555625691817d12e5d1f0bf469d6bf92f9ea",
+  "bin": [
+    "bin/iverilog.exe",
+    "bin/vvp.exe",
+    "bin/iverilog-vpi.exe",
+    "bin/ivlpp.exe",
+    "bin/vhdlpp.exe"
+  ],
+  "env_add_path": "bin",
+  "notes": "Commands provided: iverilog, vvp, iverilog-vpi, ivlpp, and vhdlpp"
+}

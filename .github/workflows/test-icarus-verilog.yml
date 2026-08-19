@@ -1,0 +1,74 @@
+name: Test Icarus Verilog package
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - bucket/icarus-verilog.json
+      - .github/workflows/test-icarus-verilog.yml
+
+permissions:
+  contents: read
+
+jobs:
+  icarus-verilog:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Scoop
+        shell: pwsh
+        run: irm get.scoop.sh | iex
+
+      - name: Install Git bucket prerequisite
+        shell: pwsh
+        run: scoop install git
+
+      - name: Add local bucket
+        shell: pwsh
+        run: scoop bucket add eda-tools $env:GITHUB_WORKSPACE
+
+      - name: Install Icarus Verilog
+        shell: pwsh
+        run: scoop install eda-tools/icarus-verilog
+
+      - name: Verify Icarus Verilog installation
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iverilog -ErrorAction SilentlyContinue)) {
+            throw "The iverilog command shim was not created"
+          }
+
+          if (-not (Get-Command vvp -ErrorAction SilentlyContinue)) {
+            throw "The vvp command shim was not created"
+          }
+
+          foreach ($command in @('iverilog-vpi', 'ivlpp', 'vhdlpp')) {
+            if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
+              throw "The $command command shim was not created"
+            }
+          }
+
+          @"
+          module main;
+            initial begin
+              `$display("Icarus Verilog Scoop smoke test passed");
+              `$finish;
+            end
+          endmodule
+          "@ | Set-Content hello.v
+
+          iverilog -o hello.vvp hello.v
+          $output = vvp hello.vvp
+          Write-Host $output
+
+          if ($output -notmatch 'Icarus Verilog Scoop smoke test passed') {
+            throw "Unexpected simulation output"
+          }
+
+          iverilog -V
+          iverilog-vpi -V
+          ivlpp -V
+          vhdlpp -V
