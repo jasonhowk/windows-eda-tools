@@ -73,4 +73,3 @@ jobs:
           }
 
           iverilog -V
-          iverilog-vpi -V
