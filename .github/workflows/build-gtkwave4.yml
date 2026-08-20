@@ -96,24 +96,39 @@ jobs:
             test -f "$dll" && cp -n "$dll" package/bin/
           done < <(ldd package/bin/gtkwave.exe | awk '$3 ~ /^\/ucrt64\/bin\/.*\.dll$/ { print $3 }')
 
+          # Bundle GdkPixbuf loaders and generate a cache using package-relative paths.
+          gdk_pixbuf_root="$(find /ucrt64/lib/gdk-pixbuf-2.0 -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -n "$gdk_pixbuf_root"
+          gdk_pixbuf_version="$(basename "$gdk_pixbuf_root")"
+          gdk_pixbuf_package_dir="package/lib/gdk-pixbuf-2.0/$gdk_pixbuf_version"
+          mkdir -p "$gdk_pixbuf_package_dir/loaders"
+          cp -a "$gdk_pixbuf_root/loaders"/. "$gdk_pixbuf_package_dir/loaders/"
+          (
+            cd "$gdk_pixbuf_package_dir/loaders"
+            gdk-pixbuf-query-loaders ./*.dll > ../loaders.cache
+          )
+
           # GTK and GLib discover these data files through their normal share paths.
-          for share_dir in glib-2.0 icons themes; do
+          for share_dir in glib-2.0 icons themes mime; do
             if test -d "/ucrt64/share/$share_dir"; then
               mkdir -p "package/share/$share_dir"
               cp -a "/ucrt64/share/$share_dir/." "package/share/$share_dir/"
             fi
           done
 
-          cat > package/gtkwave.cmd <<'CMD'
+          cat > package/gtkwave.cmd <<CMD
           @echo off
           set "GTKWAVE_HOME=%~dp0"
           set "PATH=%GTKWAVE_HOME%bin;%PATH%"
           set "GSETTINGS_SCHEMA_DIR=%GTKWAVE_HOME%share\glib-2.0\schemas"
+          set "GDK_PIXBUF_MODULEDIR=%GTKWAVE_HOME%lib\gdk-pixbuf-2.0\${gdk_pixbuf_version}\loaders"
+          set "GDK_PIXBUF_MODULE_FILE=%GTKWAVE_HOME%lib\gdk-pixbuf-2.0\${gdk_pixbuf_version}\loaders.cache"
           set "XDG_DATA_DIRS=%GTKWAVE_HOME%share;%XDG_DATA_DIRS%"
           "%GTKWAVE_HOME%bin\gtkwave.exe" %*
           CMD
 
           test -f package/bin/gtkwave.exe
+          test -f "package/lib/gdk-pixbuf-2.0/$gdk_pixbuf_version/loaders.cache"
           test -f package/share/icons/hicolor/index.theme
           test -d package/share/glib-2.0/schemas
           tree package
