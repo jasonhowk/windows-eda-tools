@@ -41,6 +41,7 @@ jobs:
             mingw-w64-ucrt-x86_64-glib2
             mingw-w64-ucrt-x86_64-gobject-introspection
             mingw-w64-ucrt-x86_64-json-glib
+            mingw-w64-ucrt-x86_64-librsvg
             mingw-w64-ucrt-x86_64-gperf
             mingw-w64-ucrt-x86_64-meson
             mingw-w64-ucrt-x86_64-ninja
@@ -107,6 +108,16 @@ jobs:
             cd "$gdk_pixbuf_package_dir/loaders"
             gdk-pixbuf-query-loaders ./*.dll > ../loaders.cache
           )
+          sed -i -E 's#^"[^"]*/package/lib/gdk-pixbuf-2.0/[^/]+/loaders/\./(libpixbufloader-[^"]+\.dll)"#"loaders/\1"#g' "$gdk_pixbuf_package_dir/loaders.cache"
+          sed -i '1i# LoaderDir = loaders' "$gdk_pixbuf_package_dir/loaders.cache"
+          ! grep -Eq '(^|[[:space:]"(])(D:/|[A-Za-z]:\\|/ucrt64/)' "$gdk_pixbuf_package_dir/loaders.cache"
+
+          # Include dependencies needed by the loader modules themselves, especially SVG.
+          for loader in "$gdk_pixbuf_package_dir"/loaders/*.dll; do
+            while read -r dll; do
+              test -f "$dll" && cp -n "$dll" package/bin/
+            done < <(ldd "$loader" | awk '$3 ~ /^\/ucrt64\/bin\/.*\.dll$/ { print $3 }')
+          done
 
           # GTK and GLib discover these data files through their normal share paths.
           for share_dir in glib-2.0 icons themes mime; do
