@@ -84,7 +84,10 @@ jobs:
           rm -rf stage package
           DESTDIR="$PWD/stage" meson install -C build
           mkdir -p package
-          cp -a stage/opt/gtkwave/. package/
+          installed_executable="$(find stage -type f -name 'gtkwave.exe' -path '*/bin/gtkwave.exe' -print -quit)"
+          test -n "$installed_executable"
+          installed_root="${installed_executable%/bin/gtkwave.exe}"
+          cp -a "$installed_root"/. package/
 
           # Bundle the UCRT64 runtime libraries required by the executable.
           mkdir -p package/bin
