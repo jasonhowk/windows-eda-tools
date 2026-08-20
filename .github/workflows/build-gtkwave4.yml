@@ -108,7 +108,14 @@ jobs:
             cd "$gdk_pixbuf_package_dir/loaders"
             gdk-pixbuf-query-loaders ./*.dll > ../loaders.cache
           )
-          sed -i -E 's#^"[^"]*/package/lib/gdk-pixbuf-2.0/[^/]+/loaders/\./(libpixbufloader-[^"]+\.dll)"#"loaders/\1"#g' "$gdk_pixbuf_package_dir/loaders.cache"
+          cache_file="$gdk_pixbuf_package_dir/loaders.cache"
+          awk '{
+            if ($0 ~ /^".*\/loaders\/\.\//) {
+              sub(/^".*\/loaders\/\.\//, "\"loaders/")
+            }
+            print
+          }' "$cache_file" > "$cache_file.tmp"
+          mv "$cache_file.tmp" "$cache_file"
           sed -i '1i# LoaderDir = loaders' "$gdk_pixbuf_package_dir/loaders.cache"
           ! grep -Eq '(^|[[:space:]"(])(D:/|[A-Za-z]:\\|/ucrt64/)' "$gdk_pixbuf_package_dir/loaders.cache"
 
