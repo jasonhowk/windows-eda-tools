@@ -47,6 +47,7 @@ jobs:
             mingw-w64-ucrt-x86_64-desktop-file-utils
             mingw-w64-ucrt-x86_64-diffutils
             mingw-w64-ucrt-x86_64-adwaita-icon-theme
+            mingw-w64-ucrt-x86_64-hicolor-icon-theme
             flex
             bison
             tree
@@ -113,6 +114,8 @@ jobs:
           CMD
 
           test -f package/bin/gtkwave.exe
+          test -f package/share/icons/hicolor/index.theme
+          test -d package/share/glib-2.0/schemas
           tree package
           cd package
           zip -r "$GITHUB_WORKSPACE/gtkwave4-${GTKWAVE_VERSION}-windows-x64.zip" .
