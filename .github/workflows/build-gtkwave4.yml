@@ -109,21 +109,43 @@ jobs:
             gdk-pixbuf-query-loaders ./*.dll > ../loaders.cache
           )
           cache_file="$gdk_pixbuf_package_dir/loaders.cache"
-          awk '{
+          loader_prefix="lib/gdk-pixbuf-2.0/$gdk_pixbuf_version/loaders/"
+          awk -v loader_prefix="$loader_prefix" '{
             if ($0 ~ /^".*\/loaders\/\.\//) {
-              sub(/^".*\/loaders\/\.\//, "\"loaders/")
+              sub(/^".*\/loaders\/\.\//, "\"" loader_prefix)
             }
             print
           }' "$cache_file" > "$cache_file.tmp"
           mv "$cache_file.tmp" "$cache_file"
-          sed -i '1i# LoaderDir = loaders' "$gdk_pixbuf_package_dir/loaders.cache"
+          sed -i "1i# LoaderDir = $loader_prefix" "$gdk_pixbuf_package_dir/loaders.cache"
           ! grep -Eq '(^|[[:space:]"(])(D:/|[A-Za-z]:\\|/ucrt64/)' "$gdk_pixbuf_package_dir/loaders.cache"
 
-          # Include dependencies needed by the loader modules themselves, especially SVG.
+          # Include the complete dependency trees needed by the loader modules,
+          # especially SVG, whose librsvg dependency has dependencies of its own.
+          copy_ucrt64_dependency_tree() {
+            local root="$1"
+            local -a queue=("$root")
+            declare -A visited=()
+
+            while ((${#queue[@]} > 0)); do
+              local current="${queue[0]}"
+              queue=("${queue[@]:1}")
+              [[ -n "${visited[$current]:-}" ]] && continue
+              visited["$current"]=1
+
+              while read -r dll; do
+                test -f "$dll" || continue
+                local target="package/bin/$(basename "$dll")"
+                if test ! -f "$target"; then
+                  cp "$dll" "$target"
+                  queue+=("$dll")
+                fi
+              done < <(ldd "$current" 2>/dev/null | awk '$3 ~ /^\/ucrt64\/bin\/.*\.dll$/ { print $3 }')
+            done
+          }
+
           for loader in "$gdk_pixbuf_package_dir"/loaders/*.dll; do
-            while read -r dll; do
-              test -f "$dll" && cp -n "$dll" package/bin/
-            done < <(ldd "$loader" | awk '$3 ~ /^\/ucrt64\/bin\/.*\.dll$/ { print $3 }')
+            copy_ucrt64_dependency_tree "$loader"
           done
 
           # GTK and GLib discover these data files through their normal share paths.
